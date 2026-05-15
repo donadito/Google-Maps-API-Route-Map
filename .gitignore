@@ -1,7 +1,11 @@
+.env
+__pycache__/
+env/
+*.pyc
+.uv/
 node_modules/
 dist/
 build/
-.env
 .DS_Store
 *.log
 coverage/
