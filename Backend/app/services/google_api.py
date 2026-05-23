@@ -13,6 +13,7 @@ async def fetch_distance_row(
   api_key: str,
   origin: PlaceInput,
   destinations: list[PlaceInput],
+  client: httpx.AsyncClient,
 ) -> list[tuple[float, float]]:
   if not destinations:
     return []
@@ -25,8 +26,7 @@ async def fetch_distance_row(
     "units": "metric",
   }
 
-  async with httpx.AsyncClient(timeout=15.0) as client:
-    response = await client.get(DISTANCE_MATRIX_URL, params=params)
+  response = await client.get(DISTANCE_MATRIX_URL, params=params)
 
   response.raise_for_status()
   payload = response.json()
@@ -61,6 +61,7 @@ async def fetch_directions_polyline(
   places: list[PlaceInput],
   order_indices: list[int],
   return_to_origin: bool,
+  client: httpx.AsyncClient,
 ) -> list[LatLng]:
   if len(order_indices) < 2:
     return []
@@ -86,8 +87,7 @@ async def fetch_directions_polyline(
   if waypoint_places:
     params["waypoints"] = "|".join(format_location(place) for place in waypoint_places)
 
-  async with httpx.AsyncClient(timeout=20.0) as client:
-    response = await client.get(DIRECTIONS_URL, params=params)
+  response = await client.get(DIRECTIONS_URL, params=params)
 
   response.raise_for_status()
   payload = response.json()

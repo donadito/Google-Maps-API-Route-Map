@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import httpx
+
 from .cache import DistanceCache
 from .google_api import fetch_distance_row
 from ..models import PlaceInput
@@ -18,6 +20,7 @@ async def build_distance_matrices(
   places: list[PlaceInput],
   api_key: str,
   cache: DistanceCache,
+  client: httpx.AsyncClient,
 ) -> tuple[list[list[float]], list[list[float]]]:
   size = len(places)
   distance_matrix = [[0.0 for _ in range(size)] for _ in range(size)]
@@ -26,7 +29,6 @@ async def build_distance_matrices(
   place_keys = [place_key(place) for place in places]
   missing: dict[int, list[int]] = {}
 
-  # Bottom-up tabulation: fill cached values first, then fetch only missing pairs.
   for i in range(size):
     for j in range(size):
       if i == j:
@@ -41,14 +43,10 @@ async def build_distance_matrices(
     origin = places[origin_index]
     destinations = [places[j] for j in destination_indices]
 
-    results = await fetch_distance_row(api_key, origin, destinations)
+    results = await fetch_distance_row(api_key, origin, destinations, client)
     cache_records: list[tuple[str, str, float, float]] = []
 
-    for destination_index, (distance, duration) in zip(
-      destination_indices,
-      results,
-      strict=False,
-    ):
+    for destination_index, (distance, duration) in zip(destination_indices, results):
       distance_matrix[origin_index][destination_index] = distance
       duration_matrix[origin_index][destination_index] = duration
       cache_records.append(
