@@ -1,13 +1,16 @@
+// @ts-ignore
 import './App.css'
 import { useState, useEffect } from 'react'
+
 import { BrowserRouter, Route, Routes, Navigate } from 'react-router-dom'
-import { onAuthStateChanged, User } from 'firebase/auth'
+import { onAuthStateChanged } from 'firebase/auth'
 import { auth } from './services/firebase' // Tu portero
 import RouteOptimizerPage from './pages/RouteOptimizerPage'
 import Login from './components/Login' // Tu formulario
 
 function App() {
-  const [usuario, setUsuario] = useState<User | null>(null);
+  // Dejamos que TypeScript infiera el estado automáticamente (acepta null o el objeto de usuario)
+  const [usuario, setUsuario] = useState<any>(null);
   const [cargando, setCargando] = useState(true);
 
   // El vigilante de Firebase que revisa si hay sesión activa
@@ -31,19 +34,19 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* RUTA DEL LOGIN */}
+        {/* 1. RUTA DEL LOGIN: Aquí es donde debes poner el (u: any) */}
         <Route 
           path="/login" 
-          element={usuario ? <Navigate to="/" replace /> : <Login onLoginSuccess={(u) => setUsuario(u)} />} 
+          element={usuario ? <Navigate to="/" replace /> : <Login onLoginSuccess={(u: any) => setUsuario(u)} />} 
         />
 
-        {/* RUTA PRINCIPAL PROTEGIDA */}
+        {/* 2. RUTA PRINCIPAL PROTEGIDA: Aquí NO necesitas el componente Login, solo la página del optimizador */}
         <Route 
           path="/" 
           element={usuario ? <RouteOptimizerPage /> : <Navigate to="/login" replace />} 
         />
 
-        {/* Ruta comodín por si escriben cualquier otra cosa, redirige al inicio */}
+        {/* 3. RUTA COMODÍN */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
