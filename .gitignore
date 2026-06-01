@@ -17,4 +17,6 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 review.md
+backend/.env
+*serviceAccountKey.json
 
