@@ -42,8 +42,8 @@ class OptimizeRequest(BaseModel):
     count = len(self.places)
     if count < 2:
       raise ValueError("Se requieren al menos 2 lugares.")
-    if count > 10:
-      raise ValueError("El maximo es 10 lugares.")
+    if count > 15:
+      raise ValueError("El maximo es 15 lugares.")
 
     if self.weight_matrix is not None:
       self._validate_square_matrix(self.weight_matrix, count, "pesos")

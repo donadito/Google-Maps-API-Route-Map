@@ -7,7 +7,7 @@ import type { OptimizeResponse, PlaceInput, PlaceSelection } from '../types/rout
 import { createId } from '../utils/ids'
 import { formatDistance, formatDuration } from '../utils/format'
 
-const MAX_PLACES = 10
+const MAX_PLACES = 15
 
 const createEmptyPlace = (): PlaceInput => ({
   id: createId(),
