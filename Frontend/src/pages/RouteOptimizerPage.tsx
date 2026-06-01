@@ -6,6 +6,7 @@ import { optimizeRoute } from '../services/routeApi'
 import type { OptimizeResponse, PlaceInput, PlaceSelection } from '../types/route'
 import { createId } from '../utils/ids'
 import { formatDistance, formatDuration } from '../utils/format'
+import { findPairExceedingRadius } from '../utils/geo'
 
 const MAX_PLACES = 15
 
@@ -106,6 +107,16 @@ export default function RouteOptimizerPage() {
 
     if (payloadPlaces.length < 2) {
       setError('Agrega al menos dos lugares validos antes de optimizar.')
+      return
+    }
+
+    const overLimit = findPairExceedingRadius(
+      payloadPlaces as Array<{ label: string; location: { lat: number; lng: number } }>,
+    )
+    if (overLimit) {
+      setError(
+        `"${overLimit.a}" y "${overLimit.b}" estan a ${overLimit.km} km entre si. El radio maximo permitido es 100 km.`,
+      )
       return
     }
 

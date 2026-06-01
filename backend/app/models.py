@@ -1,4 +1,14 @@
+import math
 from pydantic import BaseModel, Field, ConfigDict, model_validator
+
+_EARTH_RADIUS_KM = 6371.0
+
+
+def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+  d_lat = math.radians(lat2 - lat1)
+  d_lng = math.radians(lng2 - lng1)
+  a = math.sin(d_lat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(d_lng / 2) ** 2
+  return _EARTH_RADIUS_KM * 2 * math.asin(math.sqrt(a))
 
 
 class LatLng(BaseModel):
@@ -44,6 +54,18 @@ class OptimizeRequest(BaseModel):
       raise ValueError("Se requieren al menos 2 lugares.")
     if count > 15:
       raise ValueError("El maximo es 15 lugares.")
+
+    located = [p for p in self.places if p.location is not None]
+    for i in range(len(located)):
+      for j in range(i + 1, len(located)):
+        km = _haversine_km(
+          located[i].location.lat, located[i].location.lng,
+          located[j].location.lat, located[j].location.lng,
+        )
+        if km > 100:
+          raise ValueError(
+            f'"{located[i].label}" y "{located[j].label}" estan a {km:.0f} km entre si. El radio maximo es 100 km.'
+          )
 
     if self.weight_matrix is not None:
       self._validate_square_matrix(self.weight_matrix, count, "pesos")
