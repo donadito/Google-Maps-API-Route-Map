@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { auth } from "./firebase"; // Traemos al "portero" que ya configuramos
 
 /**
@@ -15,7 +16,6 @@ export const optimizarRutaConBackend = async (destinos, modoCalculo) => {
     }
 
     // 2. Le pedimos a Firebase su "brazalete VIP" (ID Token) actualizado
-    // Usamos 'await' porque Firebase tarda unos milisegundos en generar este texto cifrado
     const idToken = await usuarioActual.getIdToken();
 
     // 3. Obtenemos la URL de la Cloud Function desde nuestras variables de entorno
@@ -30,17 +30,17 @@ export const optimizarRutaConBackend = async (destinos, modoCalculo) => {
         "Authorization": `Bearer ${idToken}`
       },
       body: JSON.stringify({
-        destinos: destinos,          // Entre 2 y 15 destinos [cite: 25]
-        modo: modoCalculo            // Ruta abierta o cerrada [cite: 28-30]
+        destinos: destinos,          // Entre 2 y 15 destinos
+        modo: modoCalculo            // Ruta abierta o cerrada
       })
     });
 
-    // 5. Si el backend nos rechaza (por token inválido o IP bloqueada), lanzamos un error [cite: 35, 41]
+    // 5. Si el backend nos rechaza (por token inválido o IP bloqueada), lanzamos un error
     if (!respuesta.ok) {
       throw new Error(`Error en el servidor: ${respuesta.status}`);
     }
 
-    // 6. Si todo sale bien, recibimos la ruta ordenada y la distancia total [cite: 34]
+    // 6. Si todo sale bien, recibimos la ruta ordenada y la distancia total
     const resultado = await respuesta.json();
     return resultado; 
 

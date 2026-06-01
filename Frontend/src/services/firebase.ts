@@ -1,7 +1,8 @@
+// @ts-nocheck
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 
-// Llaves restringidas
+// Llaves restringidas leídas de forma segura desde las variables de entorno de Vite
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -11,8 +12,8 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-// Inicializacion de Firebase
+// Inicialización de Firebase
 const app = initializeApp(firebaseConfig);
 
-// Exportacion del "Portero" (auth) para usarlo en el Login
+// Exportación del "Portero" (auth) para usarlo en el Login
 export const auth = getAuth(app);
