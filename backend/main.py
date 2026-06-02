@@ -1,11 +1,11 @@
 import asyncio
 import os
 
-import functions_framework
-import httpx
 import firebase_admin
 from firebase_admin import auth as fb_auth, credentials
-from flask import Request, jsonify, make_response
+from firebase_functions import https_fn, options
+from flask import jsonify, make_response
+import httpx
 
 from app.config import get_settings
 from app.models import OptimizeRequest
@@ -27,19 +27,17 @@ def _init_firebase(settings) -> None:
         cred = credentials.Certificate(cred_path)
         firebase_admin.initialize_app(cred)
     else:
-        # En GCP usa las credenciales de la cuenta de servicio del proyecto
         firebase_admin.initialize_app(
-            options={"projectId": os.getenv("FIREBASE_PROJECT_ID", "")}
+            options={"projectId": settings.firebase_project_id or os.getenv("GCLOUD_PROJECT", "")}
         )
     _firebase_initialized = True
 
 
-def _check_ip(request: Request, allowed_ips: list[str]) -> bool:
+def _check_ip(req: https_fn.Request, allowed_ips: list[str]) -> bool:
     if not allowed_ips:
         return True
-    # X-Forwarded-For contiene la IP real del cliente detrás del load balancer de GCP
-    forwarded = request.headers.get("X-Forwarded-For", "")
-    client_ip = forwarded.split(",")[0].strip() if forwarded else request.remote_addr
+    forwarded = req.headers.get("X-Forwarded-For", "")
+    client_ip = forwarded.split(",")[0].strip() if forwarded else req.remote_addr
     return client_ip in allowed_ips
 
 
@@ -94,54 +92,49 @@ async def _run_optimization(payload: OptimizeRequest, settings) -> dict:
     }
 
 
-@functions_framework.http
-def optimize(request: Request):
+@https_fn.on_request(
+    region="us-central1",
+    memory=options.MemoryOption.MB_512,
+    timeout_sec=120,
+    cors=options.CorsOptions(
+        cors_origins="*",
+        cors_methods=["GET", "POST", "OPTIONS"],
+    ),
+)
+def optimize(req: https_fn.Request) -> https_fn.Response:
     settings = get_settings()
 
-    # CORS preflight
-    origin = request.headers.get("Origin", "")
-    cors_origin = origin if origin in settings.cors_origins else (
-        settings.cors_origins[0] if settings.cors_origins else "*"
-    )
-    if request.method == "OPTIONS":
-        resp = make_response("", 204)
-        resp.headers["Access-Control-Allow-Origin"] = cors_origin
-        resp.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
-        resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
-        return resp
-
     # IP whitelist
-    if not _check_ip(request, settings.allowed_client_ips):
-        return jsonify({"detail": "Forbidden"}), 403
+    if not _check_ip(req, settings.allowed_client_ips):
+        return https_fn.Response(response='{"detail":"Forbidden"}', status=403, mimetype="application/json")
 
     # Firebase auth
-    auth_header = request.headers.get("Authorization", "")
+    auth_header = req.headers.get("Authorization", "")
     if not auth_header.startswith("Bearer "):
-        return jsonify({"detail": "Unauthorized"}), 401
+        return https_fn.Response(response='{"detail":"Unauthorized"}', status=401, mimetype="application/json")
 
     id_token = auth_header.removeprefix("Bearer ").strip()
     try:
         _init_firebase(settings)
         fb_auth.verify_id_token(id_token)
     except Exception:
-        return jsonify({"detail": "Invalid or expired token"}), 401
+        return https_fn.Response(response='{"detail":"Invalid or expired token"}', status=401, mimetype="application/json")
 
     if not settings.google_maps_api_key:
-        return jsonify({"detail": "Falta GOOGLE_MAPS_API_KEY en las variables de entorno"}), 500
+        return https_fn.Response(response='{"detail":"Falta GOOGLE_MAPS_API_KEY"}', status=500, mimetype="application/json")
 
-    # Validar y parsear body
     try:
-        body = request.get_json(force=True)
+        body = req.get_json(force=True)
         payload = OptimizeRequest.model_validate(body)
     except Exception as exc:
-        return jsonify({"detail": str(exc)}), 400
+        import json
+        return https_fn.Response(response=json.dumps({"detail": str(exc)}), status=400, mimetype="application/json")
 
-    # Ejecutar optimizacion
     try:
         result = asyncio.run(_run_optimization(payload, settings))
     except Exception as exc:
-        return jsonify({"detail": str(exc)}), 502
+        import json
+        return https_fn.Response(response=json.dumps({"detail": str(exc)}), status=502, mimetype="application/json")
 
-    resp = jsonify(result)
-    resp.headers["Access-Control-Allow-Origin"] = cors_origin
-    return resp
+    import json
+    return https_fn.Response(response=json.dumps(result), status=200, mimetype="application/json")

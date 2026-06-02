@@ -1,0 +1,17 @@
+{
+  "functions": [
+    {
+      "source": "backend",
+      "codebase": "default",
+      "ignore": [
+        ".venv",
+        "**/__pycache__/**",
+        "**/.git/**",
+        "*.pyc",
+        ".env",
+        "serviceAccountKey.json",
+        "cache.sqlite3"
+      ]
+    }
+  ]
+}
